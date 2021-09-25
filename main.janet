@@ -92,35 +92,29 @@
     [{"browser" browser "browser-tags" browser-tags "query" query
       "bookmarks" bookmarks "bind" bind "prompt" prmpt "tiebreak" tiebreak}
      (parse-opts)
-     indices (if bookmarks
-               bookmarks
-               (try
-                 (->> (sh/$< fzf -e -m --layout=reverse
-                             ;(reduce
-                                (fn [acc [opt val]]
-                                  (if val
-                                    (if (or (array? val) (tuple? val))
-                                      (reduce |(array/push
-                                                 $0
-                                                 (string "--" opt "=" $1))
-                                              acc val)
-                                      (array/push acc
-                                                  (string "--" opt "=" val)))
-                                    acc))
-                                @[]
-                                [["prompt" prmpt]
-                                 ["query" query]
-                                 ["tiebreak" tiebreak]
-                                 ["bind" bind]])
-                             < (sh/$< buku-fzf-cached-bookmarks))
-                      (peg/match '(some (* ':d+
-                                           (some (if-not "\n" 1))
-                                           "\n"))))
-                 ([_])))]
+     indices
+     (if bookmarks
+       bookmarks
+       (try
+         (->> (sh/$< fzf -e -m --layout=reverse
+                     ;(reduce
+                        (fn [acc [opt val]]
+                          (if val
+                            (if (indexed? val)
+                              (reduce |(array/push $0 (string "--" opt "=" $1))
+                                      acc val)
+                              (array/push acc (string "--" opt "=" val)))
+                            acc))
+                        @[]
+                        [["prompt" prmpt] ["query" query]
+                         ["tiebreak" tiebreak] ["bind" bind]])
+                     < (sh/$< buku-fzf-cached-bookmarks))
+              (peg/match '(some (* ':d+ (thru "\n")))))
+         ([_])))]
     (let [urls-with-tags
           (->> (sh/$< buku --nostdin -p ;indices -f 20)
-               (peg/match '{:url (some (if-not "\t" 1))
-                            :tag (some (if-not (+ "," "\n") 1))
+               (peg/match '{:url (to "\t")
+                            :tag (to (+ "," "\n"))
                             :tags (group (* ':tag
                                             (any (* "," ':tag))))
                             :main (some (group (* ':url "\t"
