@@ -41,7 +41,7 @@
 (defn- parse-opts
   []
   (when-let [{"browser" browser "browser-tag" browser-tags "query" query
-              "bind" bind "prompt" prmpt :default bookmarks}
+              "bind" bind "prompt" prmpt "tiebreak" tiebreak :default bookmarks}
              (argparse/argparse
                description
                "browser" {:kind :option
@@ -61,6 +61,9 @@
                "prompt" {:kind :option
                          :help "fzf prompt"
                          :short "p"}
+               "tiebreak" {:kind :option
+                           :help "This option is passed to fzf"
+                           :short "T"}
                :default {:kind :accumulate})]
     (let [tag-word '(some (if-not (+ "," " ") 1))
           tag ~(* ,tag-word (any (* " " ,tag-word)))
@@ -80,17 +83,19 @@
        "query" query
        "bind" bind
        "bookmarks" bookmarks
-       "prompt" prmpt})))
+       "prompt" prmpt
+       "tiebreak" tiebreak})))
 
 (defn main
   [& args]
   (when-let
     [{"browser" browser "browser-tags" browser-tags "query" query
-      "bookmarks" bookmarks "bind" bind "prompt" prmpt} (parse-opts)
+      "bookmarks" bookmarks "bind" bind "prompt" prmpt "tiebreak" tiebreak}
+     (parse-opts)
      indices (if bookmarks
                bookmarks
                (try
-                 (->> (sh/$< fzf -e -m +s --layout=reverse
+                 (->> (sh/$< fzf -e -m --layout=reverse
                              ;(if prmpt
                                 [(string "--prompt=" prmpt)]
                                 [])
@@ -100,6 +105,9 @@
                              ;(if bind
                                 (map |(string "--bind=" $) bind)
                                 [])
+                             ;(if tiebreak
+                                [(string "--tiebreak=" tiebreak)]
+                                ["+s"])
                              < (sh/$< buku-fzf-cached-bookmarks))
                       (peg/match '(some (* ':d+
                                            (some (if-not "\n" 1))
