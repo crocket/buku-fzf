@@ -96,18 +96,22 @@
                bookmarks
                (try
                  (->> (sh/$< fzf -e -m --layout=reverse
-                             ;(if prmpt
-                                [(string "--prompt=" prmpt)]
-                                [])
-                             ;(if query
-                                [(string "--query=" query)]
-                                [])
-                             ;(if bind
-                                (map |(string "--bind=" $) bind)
-                                [])
-                             ;(if tiebreak
-                                [(string "--tiebreak=" tiebreak)]
-                                ["+s"])
+                             ;(reduce
+                                (fn [acc [opt val]]
+                                  (if val
+                                    (if (or (array? val) (tuple? val))
+                                      (reduce |(array/push
+                                                 $0
+                                                 (string "--" opt "=" $1))
+                                              acc val)
+                                      (array/push acc
+                                                  (string "--" opt "=" val)))
+                                    acc))
+                                @[]
+                                [["prompt" prmpt]
+                                 ["query" query]
+                                 ["tiebreak" tiebreak]
+                                 ["bind" bind]])
                              < (sh/$< buku-fzf-cached-bookmarks))
                       (peg/match '(some (* ':d+
                                            (some (if-not "\n" 1))
